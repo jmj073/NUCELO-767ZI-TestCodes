@@ -5,7 +5,7 @@
  *      Author: JMJ
  */
 
-#if 1
+#if 0
 
 #include "usart.h"
 #include <stdio.h>

@@ -66,9 +66,9 @@ void TestFunction()
 
 		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
-		// temperature sensor electrical characteristics 참고
 		uint16_t raw_value = HAL_ADC_GetValue(&hadc1);
 		float temp = ((float)raw_value) / ((1 << 12) - 1) * 3300;
+		// temperature sensor electrical characteristics 참고
 		temp = (temp - 760.0) / 2.5 + 25;
 
 		int sz = sprintf(msg, "ADC Raw: %hu\r\n", raw_value);
@@ -148,9 +148,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	if (hadc->Instance == ADC1) {
 		char msg[64];
 
-		// temperature sensor electrical characteristics 참고
 		uint16_t raw_value = HAL_ADC_GetValue(&hadc1);
 		float temp = ((float)raw_value) / ((1 << 12) - 1) * 3300;
+		// temperature sensor electrical characteristics 참고
 		temp = (temp - 760.0) / 2.5 + 25;
 
 		int sz = sprintf(msg, "ADC Raw: %hu\r\n", raw_value);
@@ -249,9 +249,9 @@ void TestFunction()
 	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
 		char msg[64];
 
-		// temperature sensor electrical characteristics 참고
 		uint16_t raw_value = rawValues[i];
 		float temp = ((float)raw_value) / ((1 << 12) - 1) * 3300;
+		// temperature sensor electrical characteristics 참고
 		temp = (temp - 760.0) / 2.5 + 25;
 
 		int sz = sprintf(msg, "%d ADC Raw: %hu\r\n", (int) i, raw_value);
@@ -282,7 +282,7 @@ void DMA2_Stream0_IRQHandler() {
 
 #endif /* dma mode */
 
-#if 1 /* external trigger(timer-driven) conversion */
+#if 0 /* external trigger(timer-driven) conversion */
 
 #include "usart.h"
 #include <stdio.h>
@@ -296,7 +296,6 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
   if(hadc->Instance == ADC1)
   {
     __HAL_RCC_ADC1_CLK_ENABLE();
-
 	__HAL_RCC_DMA2_CLK_ENABLE();
 
 	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 1, 0);
@@ -309,7 +308,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
     hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
     hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-    hdma_adc1.Init.Mode = DMA_NORMAL;
+    hdma_adc1.Init.Mode = DMA_CIRCULAR;
     hdma_adc1.Init.Priority = DMA_PRIORITY_LOW;
     hdma_adc1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     HAL_DMA_Init(&hdma_adc1);
@@ -329,9 +328,9 @@ static void ADC1_Init()
 	  hadc1.Instance = ADC1;
 	  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
 	  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-	  hadc1.Init.ScanConvMode = DISABLE;
-	  hadc1.Init.ContinuousConvMode = DISABLE;
-	  hadc1.Init.DiscontinuousConvMode = DISABLE;
+	  hadc1.Init.ScanConvMode = ENABLE; // CR1_SCAN
+	  hadc1.Init.ContinuousConvMode = DISABLE; // CR2_CONT
+	  hadc1.Init.DiscontinuousConvMode = DISABLE; // CR1_DISCEN
 	  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
 	  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG2_T2_TRGO;
 	  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -388,28 +387,29 @@ void TestFunction()
 	ADC1_Init();
 	TIM2_Init();
 
+	HAL_TIM_Base_Start(&htim2);
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)rawValues, 3);
 
-	while (!convCompleted);
+	while (1) {
+		while (!convCompleted);
 
-	HAL_ADC_Stop_DMA(&hadc1);
+		for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
+			char msg[64];
 
-	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
-		char msg[64];
+			// temperature sensor electrical characteristics 참고
+			uint16_t raw_value = rawValues[i];
+			float temp = ((float)raw_value) / ((1 << 12) - 1) * 3300;
+			temp = (temp - 760.0) / 2.5 + 25;
 
-		// temperature sensor electrical characteristics 참고
-		uint16_t raw_value = rawValues[i];
-		float temp = ((float)raw_value) / ((1 << 12) - 1) * 3300;
-		temp = (temp - 760.0) / 2.5 + 25;
+			int sz = sprintf(msg, "%d ADC Raw: %hu\r\n", (int)i, raw_value);
+			HAL_UART_Transmit(&huart3, (uint8_t*)msg, sz, HAL_MAX_DELAY);
 
-		int sz = sprintf(msg, "%d ADC Raw: %hu\r\n", (int) i, raw_value);
-		HAL_UART_Transmit(&huart3, (uint8_t*)msg, sz, HAL_MAX_DELAY);
+			sz = sprintf(msg, "Temperature: %f\r\n", temp);
+			HAL_UART_Transmit(&huart3, (uint8_t*)msg, sz, HAL_MAX_DELAY);
+		}
 
-		sz = sprintf(msg, "Temperature: %f\r\n", temp);
-		HAL_UART_Transmit(&huart3, (uint8_t*)msg, sz, HAL_MAX_DELAY);
+		convCompleted = 0;
 	}
-
-	while (1);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
@@ -429,13 +429,6 @@ void DMA2_Stream0_IRQHandler() {
 }
 
 #endif /* external trigger(timer-driven) conversion */
-
-
-
-
-
-
-
 
 
 

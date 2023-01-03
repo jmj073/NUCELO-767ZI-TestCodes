@@ -34,7 +34,7 @@ void TEST_userled123_button()
 }
 #endif
 
-#if 0
+#if 1
 void TEST_BSRR()
 {
 	uint8_t toggle = 0;
@@ -47,6 +47,10 @@ void TEST_BSRR()
 #endif
 
 #if 0
+
+/*
+ * cortex-m7은 bit-banding을 지원하지 않는다. 그리고 STM32F7은 cortex-m7을 사용한다.
+ */
 
 // bit_word_addr = bit_band_alias + (byte_offset x 32) + (bit_number x 4)
 // 32 => 4(word) * 8(byte bit num), 4 => 4(word) * 1(offset)
@@ -65,7 +69,7 @@ void TEST_GPIOBitBanding()
 }
 #endif
 
-#if 1
+#if 0
 void TEST_OpenDrainOutput()
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
