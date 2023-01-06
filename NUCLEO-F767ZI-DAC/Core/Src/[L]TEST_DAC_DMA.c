@@ -5,6 +5,23 @@
  *      Author: JMJ
  */
 
+/*
+
+# 흐름
+
+ 1. DMAENx bit가 set되어 있는동안
+ 	external trigger가 일어나면 DAC는
+    DMA에 request를 보낸다.(software trigger 제외)
+ 2. 그후 DAC_DHRx의 값이 DAC_DORx로 전송된다.
+
+# DMA underrun
+
+DAC DMA request는 queue되지(?) 않는다.
+첫 번째 external trigger에 대한 응답을 받기 전에
+두 번째 external trigger가 도착하면 DMA underrun이라 할 수 있겠다.
+
+*/
+
 #if 0 /* TIM6 */
 
 #include "dac_util.h"
@@ -165,6 +182,7 @@ void TestFunction() {
 #endif /* TIMER ONE PUSE MODE */
 
 #if 0 /* two channel */
+/* and two stream */
 
 #include "dac_util.h"
 
@@ -270,6 +288,10 @@ void TestFunction() {
 #endif /* two channel */
 
 #if 0 /* DMA underrun */
+/*
+DMA underrun은 언제 일어나는가?
+
+*/
 
 #include "dac_util.h"
 
@@ -357,17 +379,14 @@ void TestFunction() {
 #endif /* DMA underrun */
 
 
-// TODO 이어서 하기
 #if 0 /* dual mode */
 
 #include "dac_util.h"
 
 #define stream1 DMA1_Stream5
-#define stream2 DMA1_Stream6
 
 #define DATA_SIZE 8
-static uint16_t DMA_DATA1[DATA_SIZE];
-static uint16_t DMA_DATA2[DATA_SIZE];
+static uint32_t DMA_DATAD[DATA_SIZE];
 
 static
 void DAC_Msp_Init() {
@@ -379,28 +398,14 @@ void DAC_Msp_Init() {
 		7UL << DMA_SxCR_CHSEL_Pos 	| // select channel 7
 		DMA_SxCR_CIRC				| // circular mode
 		0b01 << DMA_SxCR_DIR_Pos	| // memory-to-peripheral
-		0b01 << DMA_SxCR_MSIZE_Pos	| // msize=half-word
-		0b01 << DMA_SxCR_PSIZE_Pos	| // psize=half-word
+		0b10 << DMA_SxCR_MSIZE_Pos	| // msize=word
+		0b10 << DMA_SxCR_PSIZE_Pos	| // psize=word
 		DMA_SxCR_MINC				| // mem increase
 	0);
 
 	stream1->NDTR = DATA_SIZE; 				// num of data
-	stream1->PAR = (uint32_t)&DAC->DHR12R1; // periph addr
-	stream1->M0AR = (uint32_t)DMA_DATA1; 	// mem addr
-
-	/* DMA for channel2 */
-	stream2->CR |= (
-		7UL << DMA_SxCR_CHSEL_Pos 	| // select channel 7
-		DMA_SxCR_CIRC				| // circular mode
-		0b01 << DMA_SxCR_DIR_Pos	| // memory-to-peripheral
-		0b01 << DMA_SxCR_MSIZE_Pos	| // msize=half-word
-		0b01 << DMA_SxCR_PSIZE_Pos	| // psize=half-word
-		DMA_SxCR_MINC				| // mem increase
-	0);
-
-	stream2->NDTR = DATA_SIZE; 				// num of data
-	stream2->PAR = (uint32_t)&DAC->DHR12R2; // periph addr
-	stream2->M0AR = (uint32_t)DMA_DATA2; 	// mem addr
+	stream1->PAR = (uint32_t)&DAC->DHR12RD; // periph addr
+	stream1->M0AR = (uint32_t)DMA_DATAD; 	// mem addr
 
 	/* GPIO */
 	GPIO_InitTypeDef gpio_init = { 0 };
@@ -438,21 +443,20 @@ void DAC_Init() {
 		/* channel 2 */
 		0b000 << DAC_CR_TSEL2_Pos 	| // Timer 6 TRGO event
 		DAC_CR_TEN2					| // trigger enable
-		DAC_CR_DMAEN2				| // DMA mode enable
 	0);
 }
 
 void TestFunction() {
+	_Static_assert(250 * (DATA_SIZE - 1) <= 4000);
 	for (int i = 0; i < DATA_SIZE; ++i) {
-		DMA_DATA1[i] = 250 * i + 2250;
-		DMA_DATA2[DATA_SIZE - i - 1] = 250 * i + 2250;
+		uint32_t data = 4000 - (250 * i);
+		DMA_DATAD[i] = (data << 16) | data;
 	}
 
 	TIM6_Init();
 	DAC_Init();
 
-	stream1->CR |= DMA_SxCR_EN; // stream enable
-	stream2->CR |= DMA_SxCR_EN; // stream enable
+	stream1->CR |= DMA_SxCR_EN;
 	DAC->CR |= DAC_CR_EN1;
 	DAC->CR |= DAC_CR_EN2;
 	DAC_WAKEUP();
