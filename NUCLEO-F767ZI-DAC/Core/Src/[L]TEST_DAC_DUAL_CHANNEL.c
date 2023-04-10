@@ -7,9 +7,9 @@
 
 /*
 소위 "dual mode"라 말할 수 있을 것 같은데,
-이 "dual mode"들은 공통적으로
+이 "dual mode"들의 공통점은
 (DAC_DHR12RD, DAC_DHR12LD or DAC_DHR8RD)
-레지스터를 사용한다.
+레지스터를 사용한다는 것이다.
 
 # mode list
 
@@ -57,7 +57,10 @@ void GPIO_Init() {
 	GPIO_InitTypeDef gpio_init = { 0 };
 
 	__HAL_RCC_GPIOA_CLK_ENABLE();
-	/* PA4 ------> DAC_OUT1 */
+	/*
+	 * PA4 ------> DAC_OUT1
+	 * PA5 ------> DAC_OUT2
+	 */
 	gpio_init.Pin = GPIO_PIN_4 | GPIO_PIN_5;
 	gpio_init.Mode = GPIO_MODE_ANALOG;
 	gpio_init.Pull = GPIO_NOPULL;

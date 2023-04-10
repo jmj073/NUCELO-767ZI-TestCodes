@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-//#include "adc.h"
+#include "adc.h"
 #include "eth.h"
 #include "usart.h"
 #include "gpio.h"
@@ -89,7 +89,7 @@ int main(void)
   MX_GPIO_Init();
   MX_ETH_Init();
   MX_USART3_UART_Init();
-//  MX_ADC1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
   void TestFunction();
